@@ -1,89 +1,119 @@
 import pytube
 import os
 from moviepy.editor import AudioFileClip
+from youtube_video import Youtube_Video
+
+# Downloadpfad
+dest_path = ""
+
+# Liste der zu herunterladenden Videos
+videos = []
 
 
-# Festlegen von Download Pfad
-dest_path = input("Download-Pfad (\"here\" für Programm-Pfad): ")
+def instruction():
+    # Festlegen von Download Pfad
+    dest_path = input("Download-Pfad (\"here\" für Programm-Pfad): ")
 
-# bei here, current working directory
-if dest_path.startswith("here"):
-    dest_path = os.getcwd()
+    # bei here, current working directory
+    if dest_path.startswith("here"):
+        dest_path = os.getcwd()
 
-# Download-Pfad wird ausgegeben
-print("Download-Pfad: " + dest_path + "\n")
+    # Download-Pfad wird ausgegeben
+    print("Download-Pfad: " + dest_path + "\n")
 
-# Anleitung
-print("Links nacheinander eingeben! \nWenn der Dateiname nicht der Videoname sein soll, den gewünschen Dateinamen mit Leerzeichen getrennt nach dem Link angeben\n"+
-      "Am Schluss \"end\" eingeben, dann erfolgt der Download")
-
-# Liste der Video-LInks
-videos = {}
-
-def get_valid_filename(filename):
-    valid_name = filename.replace("*", "")\
-        .replace("\"", "")\
-        .replace("/", "")\
-        .replace("\\", "")\
-        .replace(":", "")\
-        .replace(">", "")\
-        .replace("<", "")\
-        .replace("?", "")\
-        .replace("*", "")\
-        .replace("|", "")
-
-    b = valid_name.encode("latin-1", errors="ignore")
-    valid_name = b.decode("latin-1")
-
-    return valid_name
+    # Anleitung
+    print("Links nacheinander eingeben! \nWenn der Dateiname nicht der Videoname sein soll, den gewünschen Dateinamen mit Leerzeichen getrennt nach dem Link angeben\n"+
+        "Am Schluss \"end\" eingeben, dann erfolgt der Download")
 
 # Eingabe der YT-Links
-while True:
-    inputString = input("YT Link: ").strip()
+def start_link_input():
+    while True:
+        # Eingabe des Links
+        inputString = input("YT Link: ").strip()
 
-    # Wenn der Download starten soll,
-    if inputString == "end":
-        break
-    else:
-        information = inputString.split(" ")
+        # Wenn der Download starten soll,
+        if inputString == "end":
+            break
+        elif inputString != "":
+            informations = inputString.split(" ")
+            
+            file_format = "mp3"
+            start_time = "0"
+            end_time = "0"
+            link = informations[0]
+            filename = ""
 
-        # wenn ein Dateiname angegeben wurde,
-        if len(information) > 1:
-            videos[information[0]] = " ".join(information[1:])
-        else:
-            videos[inputString] = ""
+            for i in range(len(informations)):
+                # Wenn es sich um einen Parameter handelt
+                if informations[i].startswith("-"):
+                    # Parametername
+                    param_name = informations[i][1]
 
-# Audio der Videos wird nacheinander heruntergeladen
-for video_link in videos:
-    try:
-        # Youtube Video object
-        yt_video = pytube.YouTube(video_link)
+                    # Parameter
+                    param = informations[i+1]
 
-        # Dateiname
-        filename = get_valid_filename(videos[video_link])
+                    # Dateiformat
+                    if param_name == "f":
+                        file_format = param
 
-        # Wenn kein Name angegeben wurde.
-        if not filename:
-            # wird der Videotitel genommen
-            filename = get_valid_filename(yt_video.title)
+                    # Startzeit des Downloads in Min:Sek
+                    elif param_name == "s":
+                        start_time = param
+                    
+                    # Endzeit des Downloads
+                    elif param_name == "e":
+                        end_time = param
 
-        # Audiostreams
-        audio_streams = yt_video.streams.filter(only_audio=True)
+                    # Dateiname
+                    elif param_name == "n":
+                        filename = param
 
-        # Audiospur download als mp4
-        filepath = audio_streams[0].download(os.getcwd(), skip_existing=False)
+            # YoutubeVideo Objekt wird erstellt
+            youtube_video = Youtube_Video(link=link, filename=filename, file_format=file_format, start_time=start_time, end_time=end_time)
 
-        # Konvertieren in mp3 und an gewünschtem Speicherort speichern
-        audio = AudioFileClip(filepath)
-        audio.write_audiofile(os.path.join(dest_path, filename + ".mp3"))
-
-        # mp4 Datei wird gelöscht
-        os.remove(filepath)
-
-        print(video_link + " gespeichert als " + filename + ".mp3")
-
-    except Exception as e:
-        print("Download von " + video_link + " fehlgeschlagen\n" + str(e))
-
+            # Video wird zur Liste hinzugefügt
+            videos.append(youtube_video)
 
 
+def dowload_videos():
+    # Audio der Videos wird nacheinander heruntergeladen
+    for video in videos:
+        try:
+            if video.file_format == "mp3":
+
+                # Audiostreams
+                audio_streams = video.pytube_video.streams.filter(only_audio=True)
+
+                # Audiospur download als mp4
+                filepath = audio_streams[0].download(os.getcwd(), skip_existing=False)
+
+                # Konvertieren in mp3 und an gewünschtem Speicherort speichern
+                audio = AudioFileClip(filepath)
+                audio.write_audiofile(os.path.join(dest_path, video.filename + ".mp3"))
+
+                # mp4 Datei wird gelöscht
+                os.remove(filepath)
+
+                print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp3")
+
+            elif video.file_format == "mp4":
+                # Videostreams
+                video_streams = video.pytube_video.streams.filter()
+
+                # mp4 Download an gewünschten speicherort
+                filepath = video_streams[0].download(dest_path, skip_existing=False, filename=video.filename)
+
+                print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp4")
+        except Exception as e:
+            print("Download von " + video.filename + " fehlgeschlagen\n" + str(e))
+
+
+def main():
+    while True:
+        instruction()
+        start_link_input()
+        dowload_videos()
+
+        videos.clear()
+
+main()
