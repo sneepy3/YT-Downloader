@@ -1,4 +1,5 @@
 import pytube
+import threading
 import os
 from moviepy.editor import AudioFileClip
 from youtube_video import Youtube_Video
@@ -8,6 +9,9 @@ dest_path = ""
 
 # Liste der zu herunterladenden Videos
 videos = []
+
+# Threads
+threads = []
 
 
 def instruction():
@@ -42,9 +46,9 @@ def start_link_input():
             end_time = "0"
             link = informations[0]
             filename = ""
-
+			
             for i in range(len(informations)):
-                # Wenn es sich um einen Parameter handelt
+				# Wenn es sich um einen Parameter handelt
                 if informations[i].startswith("-"):
                     # Parametername
                     param_name = informations[i][1]
@@ -68,14 +72,27 @@ def start_link_input():
                     elif param_name == "n":
                         filename = param
 
-            # YoutubeVideo Objekt wird erstellt
-            youtube_video = Youtube_Video(link=link, filename=filename, file_format=file_format, start_time=start_time, end_time=end_time)
+            # fügt video der Liste hinzu
+            def add_video_to_list():
+                # YoutubeVideo Objekt wird erstellt
+                youtube_video = Youtube_Video(link=link, filename=filename, file_format=file_format, start_time=start_time, end_time=end_time)
 
-            # Video wird zur Liste hinzugefügt
-            videos.append(youtube_video)
+                # Video wird zur Liste hinzugefügt
+                videos.append(youtube_video)
+
+            thread = threading.Thread(target=add_video_to_list)
+            thread.start()
+            threads.append(thread)
 
 
 def dowload_videos():
+    # Warten, bis alle Videos hinzugefügt wurden
+    for thread in threads:
+        try:
+            thread.join()
+        except:
+            pass
+
     # Audio der Videos wird nacheinander heruntergeladen
     for video in videos:
         try:
@@ -99,9 +116,9 @@ def dowload_videos():
             elif video.file_format == "mp4":
                 # Videostreams
                 video_streams = video.pytube_video.streams.filter()
-
+                
                 # mp4 Download an gewünschten speicherort
-                filepath = video_streams[0].download(dest_path, skip_existing=False, filename=video.filename)
+                filepath = video_streams.get_highest_resolution().download(dest_path, skip_existing=False, filename=video.filename)
 
                 print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp4")
         except Exception as e:
