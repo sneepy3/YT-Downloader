@@ -1,7 +1,8 @@
 import pytube
 import threading
 import os
-from moviepy.editor import AudioFileClip
+import time
+from moviepy.editor import AudioFileClip, VideoFileClip
 from youtube_video import Youtube_Video
 
 # Downloadpfad
@@ -15,6 +16,8 @@ threads = []
 
 
 def instruction():
+    global dest_path
+
     # Festlegen von Download Pfad
     dest_path = input("Download-Pfad (\"here\" für Programm-Pfad): ")
 
@@ -105,8 +108,10 @@ def dowload_videos():
                 filepath = audio_streams[0].download(os.getcwd(), skip_existing=False)
 
                 # Konvertieren in mp3 und an gewünschtem Speicherort speichern
-                audio = AudioFileClip(filepath)
+                audio = AudioFileClip(filepath).subclip(video.start_time, video.end_time)
                 audio.write_audiofile(os.path.join(dest_path, video.filename + ".mp3"))
+
+                audio.reader.__del__()
 
                 # mp4 Datei wird gelöscht
                 os.remove(filepath)
@@ -118,7 +123,18 @@ def dowload_videos():
                 video_streams = video.pytube_video.streams.filter()
                 
                 # mp4 Download an gewünschten speicherort
-                filepath = video_streams.get_highest_resolution().download(dest_path, skip_existing=False, filename=video.filename)
+                filepath = video_streams.get_highest_resolution().download(dest_path, skip_existing=False, filename=video.filename + "(old)")
+
+                # Wenn nicht das ganze Video heruntergeladen werden soll,
+                if video.start_time != 0 or video.end_time != video.pytube_video.length:
+                    #os.rename(filepath, filepath + "(old)")
+
+                    videoclip = VideoFileClip(filepath).subclip(video.start_time, video.end_time)
+                    videoclip.write_videofile(os.path.join(dest_path, video.filename + ".mp4"))
+
+                    videoclip.reader.close()
+
+                    os.remove(filepath)
 
                 print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp4")
         except Exception as e:
