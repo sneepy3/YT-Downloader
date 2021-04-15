@@ -96,9 +96,10 @@ def dowload_videos():
         except:
             pass
 
-    # Audio der Videos wird nacheinander heruntergeladen
+    # Videos werden nacheinander heruntergeladen
     for video in videos:
         try:
+            # wenn nur die Audio gespeichert werden soll,
             if video.file_format == "mp3":
 
                 # Audiostreams
@@ -118,22 +119,24 @@ def dowload_videos():
 
                 print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp3")
 
+            # wenn das Video gespeichert werden soll
             elif video.file_format == "mp4":
                 # Videostreams
                 video_streams = video.pytube_video.streams.filter()
-                
+              
                 # mp4 Download an gewünschten speicherort
                 filepath = video_streams.get_highest_resolution().download(dest_path, skip_existing=False, filename=video.filename + "(old)")
 
                 # Wenn nicht das ganze Video heruntergeladen werden soll,
                 if video.start_time != 0 or video.end_time != video.pytube_video.length:
-                    #os.rename(filepath, filepath + "(old)")
-
+                    # gewünschter Videoausschnitt wird erstellt
                     videoclip = VideoFileClip(filepath).subclip(video.start_time, video.end_time)
+                    
+                    # Videoclip wird am gewünschten Speicherort gespeichert
                     videoclip.write_videofile(os.path.join(dest_path, video.filename + ".mp4"))
-
                     videoclip.reader.close()
 
+                    # ursprüngliches komplettes Video wird gelöscht
                     os.remove(filepath)
 
                 print(video.pytube_video.title + " gespeichert als " + video.filename + ".mp4")
