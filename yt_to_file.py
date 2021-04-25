@@ -111,8 +111,14 @@ def dowload_videos():
                 # Konvertieren in mp3 und an gewünschtem Speicherort speichern
                 audio = AudioFileClip(filepath).subclip(video.start_time, video.end_time)
                 audio.write_audiofile(os.path.join(dest_path, video.filename + ".mp3"))
-
-                audio.reader.__del__()
+                
+                try: 
+                    # AurdioReader muss geschlossen werden, um die mp4 Datei zu löschen
+                    # manchmal wird ein Fehler erzeugt, mp4 Datei kann trotzdem gelöscht werden
+                    # fehler z.B.: https://www.youtube.com/watch?v=YbgDZfK8WR8
+                    audio.reader.__del__()
+                except Exception as e:
+                    pass
 
                 # mp4 Datei wird gelöscht
                 os.remove(filepath)
